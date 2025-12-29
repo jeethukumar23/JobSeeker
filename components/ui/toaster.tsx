@@ -1,35 +1,24 @@
-'use client'
-
-import { useToast } from '@/hooks/use-toast'
-import {
-  Toast,
-  ToastClose,
-  ToastDescription,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
-} from '@/components/ui/toast'
+import { useEffect, useState } from "react"
 
 export function Toaster() {
-  const { toasts } = useToast()
+  const [toasts, setToasts] = useState<string[]>([])
+
+  useEffect(() => {
+    const handler = (e:any) => {
+      setToasts((t)=>[...t,e.detail])
+      setTimeout(()=>setToasts((t)=>t.slice(1)),3000)
+    }
+    window.addEventListener("toast",handler)
+    return ()=>window.removeEventListener("toast",handler)
+  },[])
 
   return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        )
-      })}
-      <ToastViewport />
-    </ToastProvider>
+    <div className="fixed bottom-5 right-5 space-y-2 z-50">
+      {toasts.map((t,i)=>(
+        <div key={i} className="bg-black text-white px-4 py-2 rounded">
+          {t}
+        </div>
+      ))}
+    </div>
   )
 }
