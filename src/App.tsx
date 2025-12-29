@@ -1,6 +1,6 @@
 import { Routes, Route, useLocation } from "react-router-dom"
 import { useEffect } from "react"
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster.tsx"
 import HomePage from "./pages/HomePage"
 import LoginPage from "./pages/LoginPage"
 import SignupPage from "./pages/SignupPage"
