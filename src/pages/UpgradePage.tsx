@@ -1,12 +1,25 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Briefcase, Crown } from "lucide-react"
-import { useAuth } from "@/contexts/AuthContext"
-import { doc, updateDoc, increment } from "firebase/firestore"
+import { useEffect, useState } from "react"
+import { onAuthStateChanged } from "firebase/auth"
 import { auth, db } from "@/lib/firebase"
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore"
 
 export default function UpgradePage() {
-  const { userData } = useAuth()
+  const [user, setUser] = useState<any>(null)
+  const [userData, setUserData] = useState<any>(null)
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        setUser(u)
+        const snap = await getDoc(doc(db, "users", u.uid))
+        setUserData(snap.data())
+      }
+    })
+    return () => unsub()
+  }, [])
 
   const handleSuccess = async (plan: string) => {
     const user = auth.currentUser
@@ -16,15 +29,17 @@ export default function UpgradePage() {
 
     if (plan === "10") {
       await updateDoc(userRef, {
-        jobCredits: increment(10),
+        postingCredits: (userData?.postingCredits || 0) + 10,
         plan: "pro"
       })
     }
 
     if (plan === "unlimited") {
       await updateDoc(userRef, {
+        plan: "unlimited",
         unlimited: true,
-        plan: "premium"
+        unlimitedUntil: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+        updatedAt: serverTimestamp(),
       })
     }
 
