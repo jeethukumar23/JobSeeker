@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Briefcase, Loader2, ArrowLeft } from "lucide-react"
 import { onAuthStateChanged } from "firebase/auth"
-import { collection, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 
@@ -59,11 +59,36 @@ export default function PostJobPage() {
     return () => unsubscribe()
   }, [navigate])
 
+  const canPostJob = (userData: any) => {
+    if (userData.unlimited && userData.unlimitedExpiry) {
+      const expiry = new Date(userData.unlimitedExpiry.seconds * 1000)
+      if (new Date() < expiry) return true
+    }
+
+    if (userData.postingCredits > 0) return true
+
+    return false
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setPosting(true)
 
     try {
+      const userDoc = await getDoc(doc(db, "users", auth.currentUser!.uid))
+      const userData = userDoc.data()
+
+      if (!canPostJob(userData)) {
+        toast({
+          title: "Upgrade Required",
+          description: "Your free posts are over or your plan expired. Upgrade to continue posting.",
+          variant: "destructive",
+        })
+        navigate("/upgrade")
+        return
+      }
+
+      // C. Allow posting + reduce credit
       await addDoc(collection(db, "jobs"), {
         title: formData.title,
         category: formData.category,
@@ -73,16 +98,17 @@ export default function PostJobPage() {
         location: formData.location,
         contact: formData.contact,
         companyName: formData.companyName,
-
-        // 🔥 REQUIRED BY FIRESTORE RULES
-        userId: user.uid,
-        email: user.email,
-        postedBy: user.uid,
-        postedAt: serverTimestamp(),
-
+        userId: auth.currentUser!.uid,
+        createdAt: serverTimestamp(),
         jobType: "Part-Time",
         applications: [],
       })
+
+      if (!userData.unlimited) {
+        await updateDoc(doc(db, "users", auth.currentUser!.uid), {
+          postingCredits: userData.postingCredits - 1,
+        })
+      }
 
       toast({
         title: "Job Posted Successfully 🎉",

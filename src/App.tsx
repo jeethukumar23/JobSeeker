@@ -15,6 +15,7 @@ import HelpCenterPage from "./pages/HelpCenterPage"
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage"
 import TermsPage from "./pages/TermsPage"
 import CookiePolicyPage from "./pages/CookiePolicyPage"
+import UpgradePage from "@/pages/UpgradePage"
 import Footer from "./components/Footer"
 import ChatPage from "./pages/ChatPage"
 
@@ -43,6 +44,7 @@ function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/upgrade" element={<UpgradePage />} />
         <Route path="/jobs/post" element={<PostJobPage />} />
         <Route path="/jobs/search" element={<SearchJobsPage />} />
         <Route path="/applications" element={<ApplicationsPage />} />

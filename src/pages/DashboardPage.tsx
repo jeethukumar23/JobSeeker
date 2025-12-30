@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Briefcase, Search, User, Loader2, AlertCircle, MapPin, ChevronRight } from "lucide-react"
 import { onAuthStateChanged } from "firebase/auth"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
 import { auth, db, isConfigValid } from "@/lib/firebase"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [userData, setUserData] = useState<any>(null)
+  const [postedJobsCount, setPostedJobsCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
@@ -38,6 +39,14 @@ export default function DashboardPage() {
           if (userDoc.exists()) {
             setUserData(userDoc.data())
           }
+
+          const jobsQuery = query(
+            collection(db, "jobs"),
+            where("posterId", "==", currentUser.uid)
+          )
+          const jobsSnap = await getDocs(jobsQuery)
+          setPostedJobsCount(jobsSnap.size)
+
           setError(null)
         } catch (err: any) {
           console.error("[v0] Error fetching user data:", err.message)
@@ -126,8 +135,52 @@ export default function DashboardPage() {
           <p className="text-sm sm:text-base text-muted-foreground">What would you like to do today?</p>
         </div>
 
+        <Card className="mb-6 border-primary/40">
+          <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="w-full">
+              <p className="text-sm text-muted-foreground">Your Plan</p>
+              <p className="font-bold capitalize">{userData?.plan || "free"}</p>
+              <p className="text-sm text-muted-foreground">
+                {userData?.unlimited ? "Unlimited job posts" : `Remaining posts: ${userData?.postingCredits}`}
+              </p>
+
+              {(() => {
+                const isPro =
+                  userData?.plan === "pro" &&
+                  userData?.planExpiry?.toDate() > new Date()
+
+                if (isPro) {
+                  return (
+                    <div className="bg-green-100 text-green-700 p-2 rounded mt-2">
+                      Pro Plan Active till {userData.planExpiry.toDate().toDateString()}
+                    </div>
+                  )
+                }
+
+                if (userData?.plan === "pro" && !isPro) {
+                  return (
+                    <div className="bg-red-100 text-red-700 p-2 rounded mt-2">
+                      Your Pro plan has expired. Upgrade to continue posting jobs.
+                    </div>
+                  )
+                }
+
+                return null
+              })()}
+            </div>
+
+            {!userData?.unlimited && userData?.postingCredits === 0 && (
+              <Link to="/upgrade">
+                <Button>Upgrade to Post More Jobs</Button>
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-12">
-          <Link to="/jobs/post">
+          <Link
+            to={userData?.unlimited || userData?.postingCredits > 0 ? "/jobs/post" : "/upgrade"}
+          >
             <Card className="hover:shadow-lg transition-all hover:border-primary cursor-pointer h-full">
               <CardHeader className="space-y-2 sm:space-y-3 p-4 sm:p-6">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-2 sm:mb-4">
@@ -200,7 +253,7 @@ export default function DashboardPage() {
                 <h3 className="text-base sm:text-lg font-semibold">For Employers</h3>
                 <div className="text-sm sm:text-base text-muted-foreground divide-y">
                   <Link
-                    to="/jobs/post"
+                    to={userData?.unlimited || userData?.postingCredits > 0 ? "/jobs/post" : "/upgrade"}
                     className="group flex items-center justify-between gap-2 hover:text-foreground hover:underline transition-colors py-2 sm:py-3"
                   >
                     <span className="flex items-center gap-2">
@@ -261,7 +314,7 @@ export default function DashboardPage() {
               </li>
               <li className="py-2 sm:py-3">
                 <Link
-                  to="/jobs/post"
+                  to={userData?.unlimited || userData?.postingCredits > 0 ? "/jobs/post" : "/upgrade"}
                   className="group flex items-center justify-between gap-2 hover:text-foreground hover:underline transition-colors"
                 >
                   <span>Employers: write clear job descriptions and include working hours.</span>
